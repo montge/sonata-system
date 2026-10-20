@@ -1,0 +1,20 @@
+// Copyright lowRISC contributors.
+// Licensed under the Apache License, Version 2.0, see LICENSE for details.
+// SPDX-License-Identifier: Apache-2.0
+
+// Lint waivers for the KR260 top level (lint_kr260 target), on top of
+// sonata_verilator_lint.vlt. The upstream lint target lints top_verilator, which
+// never instantiates the FPGA-only rst_ctrl and padring; lint_kr260 does.
+`verilator_config
+
+// rst_ctrl compares its narrow reset counter with 32-bit int parameters.
+lint_off -rule WIDTHTRUNC  -file "*/rtl/fpga/rst_ctrl.sv"
+lint_off -rule WIDTHEXPAND -file "*/rtl/fpga/rst_ctrl.sv"
+
+// padring instantiates prim_pad_wrapper as an ascending instance array.
+lint_off -rule ASCRANGE -file "*/rtl/fpga/padring.sv"
+
+// The inout pin vector is flattened into one net by the tool, which closes a
+// combinational loop UART TX -> pinmux -> pad -> pinmux -> UART RX loopback
+// that does not exist in hardware; UNOPTFLAT only affects simulation speed.
+lint_off -rule UNOPTFLAT

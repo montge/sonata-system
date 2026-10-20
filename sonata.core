@@ -36,6 +36,7 @@ filesets:
       - dv/models/fpga/rtl/zynq_ultra_ps_e_0.sv: { file_type: systemVerilogSource }
       - dv/models/fpga/rtl/DNA_PORTE2.v: { file_type: systemVerilogSource }
       - dv/verilator/sonata_verilator_lint.vlt:  { file_type: vlt }
+      - dv/verilator/sonata_kr260_lint.vlt:  { file_type: vlt }
 
   files_verilator:
     depend:

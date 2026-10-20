@@ -32,10 +32,23 @@ module system_info import system_info_reg_pkg::*; #(
   system_info_reg2hw_t reg2hw;
   system_info_hw2reg_t hw2reg;
 
-  // Return the 57-bit 'most often unique' DNA value of the device, in a bit-serial manner.
+  // Return the 'most often unique' DNA value of the device, in a bit-serial manner.
+  // The DNA is 57 bits on 7-series (DNA_PORT) and 96 bits on UltraScale+ (DNA_PORTE2).
+  // Software reads it bit-serially through the dna_capture/dna registers, so the
+  // register map is the same on both.
   wire dna_read = reg2hw.dna_capture.qe;  // Any write (re-)reads the DNA value.
   wire dna_shift = reg2hw.dna.re;  // Advance to the next bit.
   logic dna_dout;
+`ifdef TARGET_KR260
+  // Zynq UltraScale+ has no DNA_PORT; DNA_PORTE2 has the same five ports.
+  DNA_PORTE2 u_dna(
+    .CLK    (clk_i),
+    .READ   (dna_read),
+    .SHIFT  (dna_shift),
+    .DOUT   (dna_dout),
+    .DIN    (1'b0)
+  );
+`else
   DNA_PORT u_dna(
     .CLK    (clk_i),
     .READ   (dna_read),
@@ -43,6 +56,7 @@ module system_info import system_info_reg_pkg::*; #(
     .DOUT   (dna_dout),
     .DIN    (1'b0)
   );
+`endif
 
   assign hw2reg.rtl_commit_hash_0.d = 'h${system_info.commit_hash[0:8]};
   assign hw2reg.rtl_commit_hash_1.d = 'h${system_info.commit_hash[8:16]};

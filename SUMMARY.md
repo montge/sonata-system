@@ -12,6 +12,7 @@
     - [Software toolchain setup](doc/dev/toolchain-setup.md)
     - [FPGA development](doc/dev/fpga-development.md)
         - [FPGA programming](doc/dev/fpga-programming.md)
+        - [Kria KR260 target](doc/dev/kr260.md)
     - [Simulation environment](doc/dev/simulation.md)
     - [Building documentation](doc/dev/building-doc.md)
     - [Release procedure](doc/dev/release-procedure.md)
