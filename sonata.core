@@ -98,8 +98,10 @@ filesets:
       - flow/vivado_setup.tcl : { file_type: tclSource }
       # Creates the Zynq UltraScale+ PS IP that supplies pl_clk0/pl_clk1/pl_resetn0 to the PL.
       - flow/kr260_ps.tcl : { file_type: tclSource }
-      - flow/vivado_hook_opt_design_pre.tcl : { file_type: user, copyto: vivado_hook_opt_design_pre.tcl }
-      - flow/vivado_hook_route_design_pre.tcl : { file_type: user, copyto: vivado_hook_route_design_pre.tcl }
+      # KR260 variants of the over-constraint hooks: the system clock is the PS IP's clk_pl_0, not
+      # clk_sys. They are copied under the names vivado_setup.tcl registers.
+      - flow/vivado_hook_opt_design_pre_kr260.tcl : { file_type: user, copyto: vivado_hook_opt_design_pre.tcl }
+      - flow/vivado_hook_route_design_pre_kr260.tcl : { file_type: user, copyto: vivado_hook_route_design_pre.tcl }
 
 parameters:
   # XXX: This parameter needs to be absolute, or relative to the *.runs/synth_1
@@ -253,7 +255,8 @@ targets:
     parameters:
       # Size of the HyperRAM region; override with e.g. --HyperRAMSize=262144 to match the KR260.
       - HyperRAMSize
-      # Set --TARGET_KR260=true to simulate the KR260 flavour of the system (XADC stub, DNA_PORTE2).
+      # Pass --TARGET_KR260 (a flag; bool parameters take no value) to simulate the KR260 flavour of
+      # the system (XADC stub, DNA_PORTE2).
       - TARGET_KR260
       # Comment out the following line when simulating with the HyperBus controller.
       - USE_HYPERRAM_SRAM_MODEL=true

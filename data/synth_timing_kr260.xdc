@@ -172,8 +172,9 @@ set_input_delay -clock vclk_sys -min 0 [get_ports $pmod1_gpio_names]
 set_output_delay -clock vclk_sys -max 0 [get_ports $pmod1_gpio_names]
 set_output_delay -clock vclk_sys -min 0 [get_ports $pmod1_gpio_names]
 
-## PMOD C (KR260 PMOD4, J20) - asynchronous GPIO
-# Use same methodology as PMOD 0 GPIO
+## PMOD C: not brought out on the KR260 (design D10); top_kr260 has no pmodc[*]
+# ports. KR260 PMOD4 (J20) carries usrLed[7:0], covered by the usrLed false
+# path in the Timing Exceptions section.
 
 ## R-Pi Header
 ##   GPIO/SPI0 bus
@@ -386,7 +387,7 @@ set_multicycle_path        $pmod1_gpio_mulcycs       -setup -from [get_ports $pm
 set_multicycle_path [expr {$pmod1_gpio_mulcycs - 1}] -hold  -from [get_ports $pmod1_gpio_names]
 set_multicycle_path        $pmod1_gpio_mulcycs       -setup -to [get_ports $pmod1_gpio_names]
 set_multicycle_path [expr {$pmod1_gpio_mulcycs - 1}] -hold  -to [get_ports $pmod1_gpio_names]
-## PMOD C
+## PMOD C: not brought out on the KR260; no pmodc multicycle paths
 ## R-Pi Header GPIO
 set rph_gpio_mulcycs $header_gpio_mulcycs
 set_multicycle_path        $rph_gpio_mulcycs       -setup -from [get_ports $rph_gpio_names]

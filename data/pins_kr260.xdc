@@ -10,8 +10,9 @@
 ##           online (the MathWorks HDL Coder KR260 board file and a Vivado
 ##           2022.2 PMOD tutorial), NOT checked against the KR260 carrier
 ##           user guide (UG1092), the carrier schematic or AMD's published
-##           kr260_custom platform XDC. Only the eight PMOD1 (J2) data pins
-##           are in this state. Both sources agreed on the set of eight; the
+##           kr260_custom platform XDC. Only the six constrained PMOD1 (J2)
+##           ports (plus the two spare J2 pins noted in comments) are in
+##           this state. Both sources agreed on the set of eight; the
 ##           order (which package pin is Pmod pin 1, 2, 3, 4, 7, 8, 9, 10)
 ##           follows the MathWorks list and is the part most likely to be
 ##           wrong. Supporting evidence from a primary source: AMD's
@@ -182,3 +183,21 @@ set_property IOB TRUE [get_cells -hier -filter {NAME =~ */i_dmi_jtag_tap/td_o_re
 ## accepts a compressed .bit) and kept for parity with data/pins_sonata.xdc.
 ## -----------------------------------------------------------------------
 set_property BITSTREAM.GENERAL.COMPRESS TRUE [current_design]
+
+## Clock-Domain Crossing (CDC) primitives (as data/pins_sonata.xdc).
+# Set DONT_TOUCH on CDC primitives to prevent pin or boundary changes that
+# could make it difficult to find and apply timing exceptions to them or
+# perform CDC/RDC analysis on them later; data/synth_timing_kr260.xdc relies
+# on finding these cells by ORIG_REF_NAME.
+# May be able to be downgraded to KEEP_HIERARCHY, but play it safe for now.
+set_property DONT_TOUCH TRUE [get_cells -hier -filter {ORIG_REF_NAME == prim_flop_2sync}]
+set_property DONT_TOUCH TRUE [get_cells -hier -filter {ORIG_REF_NAME == prim_fifo_async}]
+set_property DONT_TOUCH TRUE [get_cells -hier -filter {ORIG_REF_NAME == prim_fifo_async_simple}]
+# Set ASYNC_REG on the flops of our flop-based CDC synchronisers to get
+# special place&route to reduce the MTBF from metastability, and to prevent
+# dangerous optimisations. Note, this appears NOT to include timing exceptions.
+# See the ASYNC_REG sections of UG901 or UG912 for details.
+set sync_cells [get_cells -hier -filter {ORIG_REF_NAME == prim_flop_2sync}]
+set sync_clk_in [get_pins -of $sync_cells -filter {REF_PIN_NAME == clk_i}]
+set sync_flops [all_fanout -flat -only_cells -endpoints_only $sync_clk_in]
+set_property ASYNC_REG TRUE $sync_flops

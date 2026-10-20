@@ -143,9 +143,14 @@ module top_kr260
     .pl_resetn0(ps_rst_n)
   );
 
-  // Produce the reset at the beginning of time and whenever the PS asserts pl_resetn0 (active
-  // low); rst_ctrl wants an active-high button input. The PS clocks are stable before the PL is
-  // configured, so there is no PLL lock to wait for.
+  // Reset. rst_ctrl is upstream's power-on reset plus button debouncer. With pll_locked_i tied high
+  // (the PS clocks are stable before the PL is configured, so there is no PLL lock to wait for) it
+  // asserts rst_n for about 200 clk_sys cycles after configuration and then follows pl_resetn0
+  // (active low, inverted here into the active-high button input) through its 500-cycle
+  // debouncer. So a PS reset takes hold and releases about 500 cycles (12.5 us at 40 MHz) after
+  // pl_resetn0 changes, and if pl_resetn0 is still low when configuration ends the core runs for
+  // those ~500 cycles before the debounced PS reset holds it; the fpga-manager releases it well
+  // within the 1 ms the kr260-fpga-target spec allows.
   assign rst_btn = ~ps_rst_n;
 
   rst_ctrl u_rst_ctrl (
