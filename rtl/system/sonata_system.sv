@@ -12,7 +12,10 @@ module sonata_system
   parameter int unsigned CheriErrWidth   = 9,
   parameter string SRAMInitFile          = "",
   parameter int unsigned SysClkFreq      = 30_000_000,
-  parameter int unsigned HyperRAMClkFreq = 100_000_000
+  parameter int unsigned HyperRAMClkFreq = 100_000_000,
+  // Size in bytes of the HyperRAM region; with USE_HYPERRAM_SRAM_MODEL this is the size of the
+  // on-chip SRAM standing in for the HyperRAM (e.g. 256 KiB on the KR260, which has no HyperRAM).
+  parameter int unsigned HyperRAMSize    = 1024 * 1024
 ) (
   // Main system clock and reset
   input logic                      clk_sys_i,
@@ -118,8 +121,7 @@ module sonata_system
 
   localparam int unsigned MemSize       = 128 * 1024; // 128 KiB
   localparam int unsigned SRAMAddrWidth = $clog2(MemSize);
-  localparam int unsigned HyperRAMSize  = 1024 * 1024; // 1 MiB
-  localparam int unsigned HyperRAMTagSize = 1024 * 1024; // 1 MiB which can hold capabilities.
+  localparam int unsigned HyperRAMTagSize = HyperRAMSize; // Whole HyperRAM region can hold capabilities.
   localparam int unsigned PwmCtrSize    = 8;
   localparam int unsigned BusAddrWidth  = 32;
   localparam int unsigned BusByteEnable = 4;

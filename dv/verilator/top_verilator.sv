@@ -4,6 +4,8 @@
 
 // This is the top level that connects the system to the virtual devices.
 module top_verilator #(
+  // Size in bytes of the HyperRAM region (the SRAM model when USE_HYPERRAM_SRAM_MODEL is set).
+  parameter int unsigned HyperRAMSize = 1024 * 1024,
 `ifdef USE_SEPARATED_CLOCKS
   // Employ separated clocks in simulation; this provides a much more accurate simulation of
   // the FPGA implementation but at the cost of increased simulation time.
@@ -346,7 +348,8 @@ module top_verilator #(
   sonata_system #(
     .CheriErrWidth   ( CheriErrWidth   ),
     .SysClkFreq      ( SysClkFreq      ),
-    .HyperRAMClkFreq ( HyperRAMClkFreq )
+    .HyperRAMClkFreq ( HyperRAMClkFreq ),
+    .HyperRAMSize    ( HyperRAMSize    )
   ) u_sonata_system (
     // Main system clock and reset
     .clk_sys_i      (clk_i),

@@ -56,11 +56,17 @@ module xadc (
     .drp_do_i    (drp_do)
   );
 
-`ifndef SYNTHESIS
-  // Fake XADC - responds with the number of requests submitted
+  // The DRP responder behind the adapter depends on the target:
+  // - TARGET_KR260: Zynq UltraScale+ has no XADC (its system monitor is
+  //   SYSMONE4) and the KR260 routes no analogue header pins to the PL, so a
+  //   stub that completes every DRP access with zero data is used in both
+  //   simulation and synthesis. The memory map and the adapter are unchanged.
+  // - SYNTHESIS (all other targets): the real XADC Hard-IP.
+  // - otherwise: a fake XADC for simulation.
+`ifdef TARGET_KR260
+  // Stub XADC - completes every request with zero read data, ignores writes
 
   // Respond the cycle after a request
-  // TODO: randomise response delay for better bug-finding
   logic respond_d;
   logic respond_q;
   assign respond_d = drp_den;
@@ -72,23 +78,11 @@ module xadc (
     end
   end
 
-  // Increment counter when get a request, and use count as response data
-  logic [XDW-1:0] req_count_d;
-  logic [XDW-1:0] req_count_q;
-  assign req_count_d = drp_den ? req_count_q + '1 : req_count_q;
-  always @(posedge drp_dclk, negedge rst_ni) begin
-    if (!rst_ni) begin
-      req_count_q <= '0;
-    end else begin
-      req_count_q <= req_count_d;
-    end
-  end
-
   // Provide signals to the TLUL-DRP adapter
   assign drp_drdy = respond_q;
-  assign drp_do = req_count_q;
+  assign drp_do = '0;
 
-  // Unused signals from TLUL adapter
+  // Unused signals from TLUL adapter (writes are accepted and dropped)
   logic unused_drp_dwe, unused_drp_daddr, unused_drp_di;
   assign unused_drp_dwe   =  drp_dwe;
   assign unused_drp_daddr = ^drp_daddr;
@@ -99,7 +93,7 @@ module xadc (
   assign unused_analog_p  = ^analog_p_i;
   assign unused_analog_n  = ^analog_n_i;
 
-`else  // SYNTHESIS
+`elsif SYNTHESIS
   // Real XADC
   xadc_wiz_0 u_xadc (
     .reset_in            (0), // Reset signal for the System Monitor control logic
@@ -159,6 +153,49 @@ module xadc (
 //  .vauxn15             (0)
   );
 
-`endif  // SYNTHESIS
+`else  // !TARGET_KR260 && !SYNTHESIS
+  // Fake XADC - responds with the number of requests submitted
+
+  // Respond the cycle after a request
+  // TODO: randomise response delay for better bug-finding
+  logic respond_d;
+  logic respond_q;
+  assign respond_d = drp_den;
+  always_ff @(posedge drp_dclk or negedge rst_ni) begin
+    if (!rst_ni) begin
+      respond_q <= '0;
+    end else begin
+      respond_q <= respond_d;
+    end
+  end
+
+  // Increment counter when get a request, and use count as response data
+  logic [XDW-1:0] req_count_d;
+  logic [XDW-1:0] req_count_q;
+  assign req_count_d = drp_den ? req_count_q + '1 : req_count_q;
+  always @(posedge drp_dclk, negedge rst_ni) begin
+    if (!rst_ni) begin
+      req_count_q <= '0;
+    end else begin
+      req_count_q <= req_count_d;
+    end
+  end
+
+  // Provide signals to the TLUL-DRP adapter
+  assign drp_drdy = respond_q;
+  assign drp_do = req_count_q;
+
+  // Unused signals from TLUL adapter
+  logic unused_drp_dwe, unused_drp_daddr, unused_drp_di;
+  assign unused_drp_dwe   =  drp_dwe;
+  assign unused_drp_daddr = ^drp_daddr;
+  assign unused_drp_di    = ^drp_di;
+
+  // Unused analog(ue) input signals
+  logic unused_analog_p, unused_analog_n;
+  assign unused_analog_p  = ^analog_p_i;
+  assign unused_analog_n  = ^analog_n_i;
+
+`endif  // TARGET_KR260 / SYNTHESIS
 
 endmodule

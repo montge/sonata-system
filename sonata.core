@@ -20,6 +20,23 @@ filesets:
       - rtl/system/rs485_ctrl.sv
     file_type: systemVerilogSource
 
+  files_kr260:
+    depend:
+      - lowrisc:ibex:fpga_xilinx_shared
+    files:
+      - rtl/fpga/padring.sv
+      - rtl/fpga/top_kr260.sv
+      - rtl/fpga/rst_ctrl.sv
+    file_type: systemVerilogSource
+
+  # Simulation stand-ins for the Vivado-generated PS IP and UltraScale+ primitives used by the
+  # KR260 top level, for lint only.
+  files_kr260_sim_models:
+    files:
+      - dv/models/fpga/rtl/zynq_ultra_ps_e_0.sv: { file_type: systemVerilogSource }
+      - dv/models/fpga/rtl/DNA_PORTE2.v: { file_type: systemVerilogSource }
+      - dv/verilator/sonata_verilator_lint.vlt:  { file_type: vlt }
+
   files_verilator:
     depend:
       - lowrisc:ibex:sim_shared
@@ -38,6 +55,7 @@ filesets:
       - rtl/system/rs485_ctrl.sv: { file_type: systemVerilogSource }
       - dv/models/hyperram/rtl/hyperram_W956.sv: { file_type: systemVerilogSource }
       - dv/models/fpga/rtl/DNA_PORT.v: { file_type: systemVerilogSource }
+      - dv/models/fpga/rtl/DNA_PORTE2.v: { file_type: systemVerilogSource }
       - dv/models/fpga/rtl/IOBUF.v: { file_type: systemVerilogSource }
       - dv/models/fpga/rtl/ISERDESE2.v: { file_type: systemVerilogSource }
       - dv/models/fpga/rtl/OBUF.v: { file_type: systemVerilogSource }
@@ -64,6 +82,21 @@ filesets:
   files_tcl:
     files:
       - flow/vivado_setup.tcl : { file_type: tclSource }
+      - flow/vivado_hook_opt_design_pre.tcl : { file_type: user, copyto: vivado_hook_opt_design_pre.tcl }
+      - flow/vivado_hook_route_design_pre.tcl : { file_type: user, copyto: vivado_hook_route_design_pre.tcl }
+
+  files_constraints_kr260:
+    files:
+      - data/pins_kr260.xdc
+      - data/synth_timing_kr260.xdc
+      - data/impl_timing.xdc
+    file_type: xdc
+
+  files_tcl_kr260:
+    files:
+      - flow/vivado_setup.tcl : { file_type: tclSource }
+      # Creates the Zynq UltraScale+ PS IP that supplies pl_clk0/pl_clk1/pl_resetn0 to the PL.
+      - flow/kr260_ps.tcl : { file_type: tclSource }
       - flow/vivado_hook_opt_design_pre.tcl : { file_type: user, copyto: vivado_hook_opt_design_pre.tcl }
       - flow/vivado_hook_route_design_pre.tcl : { file_type: user, copyto: vivado_hook_route_design_pre.tcl }
 
@@ -103,6 +136,17 @@ parameters:
     paramtype: vlogdefine
     description: Targeting the Sonata XL board rather than the Sonata One board.
 
+  TARGET_KR260:
+    datatype: bool
+    paramtype: vlogdefine
+    description: Targeting the AMD Kria KR260 (K26 SOM, Zynq UltraScale+) rather than a Sonata board.
+
+  HyperRAMSize:
+    datatype: int
+    paramtype: vlogparam
+    default: 1048576
+    description: Size in bytes of the HyperRAM region (the on-chip SRAM model when USE_HYPERRAM_SRAM_MODEL is set).
+
 targets:
   default: &default_target
     filesets:
@@ -140,6 +184,44 @@ targets:
       - USE_HYPERRAM_SRAM_MODEL=true
       - TARGET_XL_BOARD=true
 
+  # AMD Kria KR260 Robotics Starter Kit (K26 SOM). Clocks and reset come from the Zynq PS, the
+  # HyperRAM is replaced by an on-chip SRAM model sized to fit the K26's block RAM, and the
+  # 7-series-only XADC and DNA_PORT are replaced under TARGET_KR260.
+  synth_kr260:
+    <<: *default_target
+    default_tool: vivado
+    filesets_append:
+      - files_kr260
+      - files_constraints_kr260
+      - files_tcl_kr260
+    toplevel: top_kr260
+    tools:
+      vivado:
+        part: "xck26-sfvc784-2LV-c" # Kria K26 SOM
+    parameters:
+      - SRAMInitFile
+      - HyperRAMSize=262144
+      - PRIM_DEFAULT_IMPL=prim_pkg::ImplXilinx
+      - USE_HYPERRAM_SRAM_MODEL=true
+      - TARGET_KR260=true
+
+  # Verilator lint of the KR260 top level with simulation stand-ins for the PS IP.
+  lint_kr260:
+    <<: *default_target
+    default_tool: verilator
+    filesets_append:
+      - files_kr260
+      - files_kr260_sim_models
+    toplevel: top_kr260
+    tools:
+      verilator:
+        mode: lint-only
+    parameters:
+      - HyperRAMSize=262144
+      - PRIM_DEFAULT_IMPL=prim_pkg::ImplGeneric
+      - USE_HYPERRAM_SRAM_MODEL=true
+      - TARGET_KR260=true
+
   sim:
     <<: *default_target
     default_tool: verilator
@@ -168,6 +250,10 @@ targets:
           # Verilator without increasing the unroll count (see Verilator#1266)
           - "--unroll-count 72"
     parameters:
+      # Size of the HyperRAM region; override with e.g. --HyperRAMSize=262144 to match the KR260.
+      - HyperRAMSize
+      # Set --TARGET_KR260=true to simulate the KR260 flavour of the system (XADC stub, DNA_PORTE2).
+      - TARGET_KR260
       # Comment out the following line when simulating with the HyperBus controller.
       - USE_HYPERRAM_SRAM_MODEL=true
       # Set the following line to true for HyperBus controller or correct USB frequency;
